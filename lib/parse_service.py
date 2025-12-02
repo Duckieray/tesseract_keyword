@@ -7,50 +7,52 @@ def parse_hocr(hocr_file_path, keywords):
 
     soup = BeautifulSoup(hocr_content, 'html.parser')
     word_elements = soup.find_all('span', class_='ocrx_word')
+
     keywords_list = keywords.lower().split()
     consecutive_bbox = None
 
     def is_similar(word1, word2, threshold=0.6):
-        ratio = difflib.SequenceMatcher(None, word1, word2).ratio()
-        return ratio >= threshold
-    
+        return difflib.SequenceMatcher(None, word1, word2).ratio() >= threshold
+
     for i in range(len(word_elements) - len(keywords_list) + 1):
         match = True
         for j, keyword in enumerate(keywords_list):
-            current_word = word_elements[i + j].get_text(strip=True).lower()
+            current = word_elements[i + j].get_text(strip=True).lower()
+
+            # wildcard support: keyword="*" matches anything
             if keyword == "*":
                 continue
-            if not is_similar(current_word, keyword, 0.6):
+
+            if not is_similar(current, keyword):
                 match = False
                 break
+
         if match:
             bboxes = [parse_bbox(word_elements[i + j]['title']) for j in range(len(keywords_list))]
             consecutive_bbox = combine_bboxes(bboxes)
             break
 
     if consecutive_bbox:
-        center_x, center_y = calculate_center(consecutive_bbox)
-        return center_x, center_y
+        return calculate_center(consecutive_bbox)
     else:
         print("Consecutive keywords not found")
-        return None, None, None
+        return None, None
 
-# Parse bbox from title attribute
 def parse_bbox(title):
     bbox_str = title.split('bbox ')[1].split(';')[0]
-    bbox = [int(coord) for coord in bbox_str.split()]
-    return bbox
+    return [int(x) for x in bbox_str.split()]
 
-# Combine multiple bounding boxes
 def combine_bboxes(bboxes):
-    min_x = min(bbox[0] for bbox in bboxes)
-    min_y = min(bbox[1] for bbox in bboxes)
-    max_x = max(bbox[2] for bbox in bboxes)
-    max_y = max(bbox[3] for bbox in bboxes)
+    min_x = min(b[0] for b in bboxes)
+    min_y = min(b[1] for b in bboxes)
+    max_x = max(b[2] for b in bboxes)
+    max_y = max(b[3] for b in bboxes)
     return min_x, min_y, max_x, max_y
 
-# Calculate center coordinates of a bounding box
 def calculate_center(bbox):
-    center_x = (bbox[0] + bbox[2]) // 2
-    center_y = (bbox[1] + bbox[3]) // 2
-    return center_x, center_y
+    x1, y1, x2, y2 = bbox
+    return (x1 + x2) // 2, (y1 + y2) // 2
+
+def get_word_coords(center_x, center_y):
+    # used later for icon alignment
+    return (center_x - 50, center_y - 10, 100, 20)

@@ -1,27 +1,14 @@
 *** Settings ***
-Library    lib/find_icon_pos.py
+Library    find_icon_pos.py
+Library    parse_service.py
 Library    pyautogui
 Library    Screenshot
 
-*** Variables ***
-${SCREENSHOT_NAME}    screenshot.jpg
-${ICON}    ../test-data/icon.png
-
-*** Test Cases ***
-Find and Click icon
-    Locate Icon    ${ICON}
-    Click Icon On Screen    ${ICON}
-
 *** Keywords ***
-Locate Icon
-    [Arguments]    ${icon}
-    ${result}=    Find Icon Position    ${icon}    ${SCREENSHOT_NAME}    cv.TM_SQDIFF_NORMED
-    Log To Console    ${result}
-    Should Be Equal As Strings    ${result}    (303, 735)
+Click_Icon_Next_To_Keyword
+    [Arguments]    ${icon_path}    ${keywords}    ${threshold}=0.8
+    ${center_x}    ${center_y}=    Select_Keyword    ${keywords}    no    yes
 
-Click Icon On Screen
-    [Arguments]    ${icon}
-    Take Screenshot    ${SCREENSHOT_NAME}
-    ${result}=    Find Icon Position    ${icon}    ${SCREENSHOT_NAME}    cv.TM_SQDIFF_NORMED
-    Log To Console    ${result}
-    pyautogui.Click    ${result[0]}    ${result[1]}
+    ${word_coords}=    get_word_coords    ${center_x}    ${center_y}
+    ${icon_x}    ${icon_y}=    find_icon_position    ${icon_path}    ${SCREENSHOT_NAME}    ${threshold}    ${word_coords}
+    pyautogui.click    ${icon_x}    ${icon_y}
